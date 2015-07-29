@@ -7,9 +7,9 @@ import (
 
 func pathTokens(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: `tokens/(?P<jit>[0-9A-Fa-f-:]+)`,
+		Pattern: `tokens/(?P<jti>[0-9A-Fa-f-:]+)`,
 		Fields: map[string]*framework.FieldSchema{
-			"jit": &framework.FieldSchema{
+			"jti": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Description: "JWT Token Identifier",
 			},
@@ -23,7 +23,7 @@ func pathTokens(b *backend) *framework.Path {
 
 func (b *backend) pathTokenRead(
 	req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	entry, err := req.Storage.Get("tokens/" + data.Get("jit").(string))
+	entry, err := req.Storage.Get("tokens/" + data.Get("jti").(string))
 	if err != nil {
 		return nil, err
 	}

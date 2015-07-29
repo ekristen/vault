@@ -47,7 +47,7 @@ func pathIssue(b *backend) *framework.Path {
 				Default:     int(time.Now().Unix()),
 				Description: "The time the JWT was issued",
 			},
-			"jit": &framework.FieldSchema{
+			"jti": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Default:     uuid.GenerateUUID(),
 				Description: "Unique identifier for the JWT",
@@ -122,9 +122,9 @@ func (b *backend) pathIssueWrite(
 			token.Claims["iat"] = data.Get("iat").(int)
 		}
 	}
-	if _, ok := token.Claims["jit"]; !ok {
-		if data.Get("jit") != "" {
-			token.Claims["jit"] = data.Get("jit").(string)
+	if _, ok := token.Claims["jti"]; !ok {
+		if data.Get("jti") != "" {
+			token.Claims["jti"] = data.Get("jti").(string)
 		}
 	}
 
@@ -150,14 +150,14 @@ func (b *backend) pathIssueWrite(
 	}
 
 	resp := b.Secret(SecretTokensType).Response(map[string]interface{}{
-		"jit": token.Claims["jit"].(string),
+		"jti": token.Claims["jti"].(string),
 		"token": tokenString,
 	}, map[string]interface{} {
-		"jit": data.Get("jit").(string),
+		"jti": data.Get("jti").(string),
 	})
 
 	err = req.Storage.Put(&logical.StorageEntry{
-		Key:   "tokens/" + data.Get("jit").(string),
+		Key:   "tokens/" + data.Get("jti").(string),
 		Value: []byte(tokenString),
 	})
 	if err != nil {
