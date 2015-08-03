@@ -195,5 +195,3 @@ what signing algorithm is used for the JWT token. For example,
 if the backend is mounted at "jwt" and you create a role at
 "jwt/roles/auth" then a user can request a JWT token at "jwt/issue/auth".
 `
-
-

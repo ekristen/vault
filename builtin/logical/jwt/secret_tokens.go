@@ -157,8 +157,3 @@ func (b *backend) secretTokensRevoke(
 
 	return nil, nil
 }
-
-
-
-
-

@@ -131,9 +131,3 @@ func (b *backend) pathIssueWrite(
 
 	return b.secretTokensCreate(req, data, claims, roleName)
 }
-
-
-
-
-
-
