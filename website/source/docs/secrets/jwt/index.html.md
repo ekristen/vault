@@ -29,6 +29,17 @@ These require an ECDSA private/public keypair for signing and verification.
 
 These require a shared secret for signing and verification.
 
+## Roles
+
+Roles are defined with the signing algorithm, the secret key or private key to be used, as well as allowing for default but optional JWT Token claims. Once you write a private key or a secret to the role, it CANNOT be read back out.
+
+The default expiration field on a role is expressed in GoLang's Time Duration format, where hour is the largest format. For example: 24h, 120s, 720h, etc.
+
+Roles by default have a Lease enabled. When a lease is enabled, the vault will store the token by it's JTI field. It will also allow for renewal. The renewal ONLY extends the lifetime of the secret in the vault, it has NO impact on the JWT token itself. When a token is created for the first time, the claims are stored and when a renew is done, the token is resigned with the same claim information. 
+
+If you set `lease` to `false` when you create the role, **NO** information is stored in the vault regarding the token.
+
+**Important:** The lease and the JWT expiration are not tied together.
 
 ## Quick Start
 
@@ -46,21 +57,11 @@ a "webauth" role:
 
 ```text
 $ vault write jwt/roles/webauth \
-    name=webauth \
-    algorithm=RS256
-```
-
-This path will create a named role along with the algorithm used
-to sign the token.
-
-The next step is to configure the key for the role. Each role requires a secret or
-a private key to be associated against it. For example, lets configure a private
-key against the "webauth" role.
-
-```text
-$ vault write jwt/config/webauth \
+    algorithm=RS256 \
     key=@/path/to/private.key
 ```
+
+Each role requires a secret or a private key to be associated against it.
 
 Generating a token requires passing of additional information so we use the
 "jwt/issue/ROLE" path.
@@ -73,7 +74,6 @@ $ vault write jwt/issue/webauth \
     claims=@extra.json
 ```
 
-The issue path has several 
 
 ## API
 
@@ -168,7 +168,7 @@ The issue path has several
 </dl>
 
 
-### /jwt/config/
+### /jwt/roles/
 #### POST
 
 <dl class="api">
@@ -187,9 +187,39 @@ The issue path has several
   <dd>
     <ul>
       <li>
-        <span class="param">algorithm</span>
+        <span class="param">key</span>
         <span class="param-flags">required</span>
         The algorithm used by JWT to sign the token.
+      </li>
+      <li>
+        <span class="param">algorithm</span>
+        <span class="param-flags">optional</span>
+        The algorithm used by JWT to sign the token. (Default: RS256)
+      </li>
+      <li>
+        <span class="param">lease</span>
+        <span class="param-flags">optional</span>
+        Default: true, Will store the JWT token as a secret, can be renewed.
+      </li>
+      <li>
+        <span class="param">iss</span>
+        <span class="param-flags">optional</span>
+        The default JWT Issuer for the Role, can be overridden at issue.
+      </li>
+      <li>
+        <span class="param">sub</span>
+        <span class="param-flags">optional</span>
+        The default JWT Subject for the Role, can be overridden at issue.
+      </li>
+      <li>
+        <span class="param">aud</span>
+        <span class="param-flags">optional</span>
+        The default JWT Audience for the Role, can be overridden at issue.
+      </li>
+      <li>
+        <span class="param">exp</span>
+        <span class="param-flags">optional</span>
+        The default JWT Expiration fro the Role, can be overridden at issue. Format is GoLang Time Duration (example: 24h, 720h, 60s)
       </li>
     </ul>
   </dd>
@@ -249,7 +279,7 @@ The issue path has several
         Not Before: the time at which the token is not useful before. Expressed as seconds, unix time. (Default: current time)
       </li>
       <li>
-        <span class="param">jit</span>
+        <span class="param">jti</span>
         <span class="param-flags">optional</span>
         JSONWebToken Identifier. Unique ID useful for preventing replay attacks. (Default: Random UUID)
       </li>
@@ -267,7 +297,7 @@ The issue path has several
     ```javascript
     {
         "data": {
-            "jit": "...",
+            "jti": "...",
             "token": "..."
         }
     }

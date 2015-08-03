@@ -1,6 +1,8 @@
 package jwt
 
 import (
+	"time"
+
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 )
@@ -15,14 +17,7 @@ func Backend() *framework.Backend {
 	var b backend
 	b.Backend = &framework.Backend{
 
-		PathsSpecial: &logical.Paths{
-			Root: []string{
-				`roles/(?P<name>\w+)/config`,
-			},
-		},
-
 		Paths: []*framework.Path{
-			pathConfig(&b),
 			pathRoles(&b),
 			pathIssue(&b),
 			pathTokens(&b),
@@ -41,5 +36,12 @@ type backend struct {
 	*framework.Backend
 }
 
+type roleConfig struct {
+	Algorithm string        `json:"algorithm" structs:"algorithm" mapstructure:"algorithm"`
+	Key       string        `json:"key" structs:"key" mapstructure:"key"`
+}
 
-
+type configLease struct {
+	Lease     time.Duration
+	LeaseMax  time.Duration
+}

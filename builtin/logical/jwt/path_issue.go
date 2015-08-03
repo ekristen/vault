@@ -5,8 +5,6 @@ import (
 	"time"
 	"encoding/json"
 
-	jwt "github.com/dgrijalva/jwt-go"
-
 	"github.com/hashicorp/vault/helper/uuid"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
@@ -77,7 +75,44 @@ func (b *backend) pathIssueWrite(
 		return logical.ErrorResponse(fmt.Sprintf("Unknown role: %s", roleName)), nil
 	}
 
-	token := jwt.New(jwt.SigningMethodRS256)
+	claims := map[string]interface{}{
+		"initial": "ok",
+	}
+
+	if role.Issuer != "" {
+		claims["iss"] = role.Issuer
+	}
+	if role.Subject != "" {
+		claims["sub"] = role.Subject
+	}
+	if role.Audience != "" {
+		claims["aud"] = role.Audience
+	}
+	if role.Expiration != 0 {
+		claims["exp"] = int(time.Now().Add(role.Expiration).Unix())
+	}
+
+	if data.Get("iss") != "" {
+		claims["iss"] = data.Get("iss").(string)
+	}
+	if data.Get("sub") != "" {
+		claims["sub"] = data.Get("sub").(string)
+	}
+	if data.Get("aud") != "" {
+		claims["aud"] = data.Get("aud").(string)
+	}
+	if data.Get("exp").(int) > 0 {
+		claims["exp"] = data.Get("exp").(int)
+	}
+	if data.Get("nbf").(int) > 0 {
+		claims["nbf"] = data.Get("nbf").(int)
+	}
+	if data.Get("iat").(int) > 0 {
+		claims["iat"] = data.Get("iat").(int)
+	}
+	if data.Get("jti") != "" {
+		claims["jti"] = data.Get("jti").(string)
+	}
 
 	if data.Get("claims").(string) != "" {
 		// Parse JSON using unmarshal
@@ -88,84 +123,15 @@ func (b *backend) pathIssueWrite(
 		}
 		
 		for k, v := range uc {
-			token.Claims[k] = v
+			claims[k] = v
 		}
 	}
 
-	if _, ok := token.Claims["iss"]; !ok {
-		if data.Get("iss") != "" {
-			token.Claims["iss"] = data.Get("iss").(string)
-		}
-	}
-	if _, ok := token.Claims["sub"]; !ok {
-		if data.Get("sub") != "" {
-			token.Claims["sub"] = data.Get("sub").(string)
-		}
-	}
-	if _, ok := token.Claims["aud"]; !ok {
-		if data.Get("aud") != "" {
-			token.Claims["aud"] = data.Get("aud").(string)
-		}
-	}
-	if _, ok := token.Claims["exp"]; !ok {
-		if data.Get("exp").(int) > 0 {
-			token.Claims["exp"] = data.Get("exp").(int)
-		}
-	}
-	if _, ok := token.Claims["nbf"]; !ok {
-		if data.Get("nbf").(int) > 0 {
-			token.Claims["nbf"] = data.Get("nbf").(int)
-		}
-	}
-	if _, ok := token.Claims["iat"]; !ok {
-		if data.Get("iat").(int) > 0 {
-			token.Claims["iat"] = data.Get("iat").(int)
-		}
-	}
-	if _, ok := token.Claims["jti"]; !ok {
-		if data.Get("jti") != "" {
-			token.Claims["jti"] = data.Get("jti").(string)
-		}
-	}
+	delete(claims, "initial")
 
-	entry, err := req.Storage.Get("config/" + roleName)
-	if err != nil {
-		return nil, err
-	}
-	if entry == nil {
-		return nil, fmt.Errorf(
-			"License Private Key haven't been configured. Please configure\n" +
-				"them at the 'config/" + roleName + "' endpoint")
-	}
-
-	var config roleConfig
-	if err := entry.DecodeJSON(&config); err != nil {
-		return nil, fmt.Errorf("error reading jwt configuration: %s", err)
-	}
-
-	tokenString, err := token.SignedString([]byte(config.Key))
-
-	if err != nil {
-		return nil, err
-	}
-
-	resp := b.Secret(SecretTokensType).Response(map[string]interface{}{
-		"jti": token.Claims["jti"].(string),
-		"token": tokenString,
-	}, map[string]interface{} {
-		"jti": data.Get("jti").(string),
-	})
-
-	err = req.Storage.Put(&logical.StorageEntry{
-		Key:   "tokens/" + data.Get("jti").(string),
-		Value: []byte(tokenString),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Unable to store token locally")
-	}
-
-	return resp, nil
+	return b.secretTokensCreate(req, data, claims, roleName)
 }
+
 
 
 
