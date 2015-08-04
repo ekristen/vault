@@ -31,9 +31,9 @@ func pathRoles(b *backend) *framework.Path {
 				Description: "Private Key (RSA or EC) or String for HMAC Algorithm",
 			},
 			"lease": &framework.FieldSchema{
-				Type:        framework.TypeBool,
-				Default:     true,
-				Description: "Use leases, if true, tokens will be kept for 30 days, if false, tokens and claims are not stored",
+				Type:        framework.TypeString,
+				Default:     "1h",
+				Description: "Default Lease duration (1 hour). Set to 0s to disable, if disabled no renews and no data is stored",
 			},
 			"iss": &framework.FieldSchema{
 				Type:        framework.TypeString,
@@ -46,11 +46,6 @@ func pathRoles(b *backend) *framework.Path {
 			"aud": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Description: "Default Audience for the Role for the JWT Token",
-			},
-			"exp": &framework.FieldSchema{
-				Type:        framework.TypeString,
-				Default:     "0h",
-				Description: "Default Expiration (from time of issue) for the Role fpr the JWT Token, expressed in Duration, Example: 24h",
 			},
 		},
 
@@ -115,10 +110,10 @@ func (b *backend) pathRoleRead(
 
 func (b *backend) pathRoleCreate(
 	req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	name := data.Get("name").(string)
-	key  := data.Get("key").(string)
-	alg  := data.Get("algorithm").(string)
-	expRaw  := data.Get("exp").(string)
+	name  := data.Get("name").(string)
+	key   := data.Get("key").(string)
+	alg   := data.Get("algorithm").(string)
+	lease := data.Get("lease").(string)
 	
 	signingMethod := jwt.GetSigningMethod(data.Get("algorithm").(string))
 	if signingMethod == nil {
@@ -146,20 +141,23 @@ func (b *backend) pathRoleCreate(
 		}
 	}
 
-	exp, err := time.ParseDuration(expRaw)
+	ld, err := time.ParseDuration(lease)
 	if err != nil {
 		return logical.ErrorResponse(fmt.Sprintf(
-			"Invalid Default Expiration: %s", err)), nil
+			"Invalid Lease: %s", err)), nil
+	}
+
+	if time.Duration.String(ld) == "0" {
+		lease = "0"
 	}
 
 	entry := &roleEntry{
 		Algorithm:    alg,
 		Key:          key,
-		Lease:        data.Get("lease").(bool),
+		Lease:        lease,
 		Issuer:       data.Get("iss").(string),
 		Subject:      data.Get("sub").(string),
 		Audience:     data.Get("aud").(string),
-		Expiration:   exp,
 	}
 
 	// Store it
@@ -177,11 +175,10 @@ func (b *backend) pathRoleCreate(
 type roleEntry struct {
 	Algorithm      string        `json:"algorithm" structs:"algorithm" mapstructure:"algorithm"`
 	Key            string        `json:"key" structs:"key" mapstructure:"key"`
-	Lease          bool          `json:"lease" structs:"lease" mapstructure:"lease"`
+	Lease          string        `json:"lease" structs:"lease" mapstructure:"lease"`
 	Issuer         string        `json:"iss" structs:"iss" mapstructure:"iss"`
 	Subject        string        `json:"sub" structs:"sub" mapstructure:"sub"`
 	Audience       string        `json:"aud" structs:"aud" mapstructure:"aud"`
-	Expiration     time.Duration `json:"exp" structs:"exp" mapstructure:"exp"`
 }
 
 const pathRolesHelpSyn = `

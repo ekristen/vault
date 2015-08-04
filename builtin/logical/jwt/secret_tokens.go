@@ -55,7 +55,7 @@ func (b *backend) secretTokensCreate(
 		return nil, err
 	}
 
-	if role.Lease == true {
+	if role.Lease != "0" {
 		resp := b.Secret(SecretTokensType).Response(map[string]interface{}{
 			"role": roleName,
 			"jti": claims["jti"].(string),
@@ -66,7 +66,9 @@ func (b *backend) secretTokensCreate(
 			"claims": token.Claims,
 		})
 
-		resp.Secret.Lease = 720 * time.Hour
+		lease, _ := time.ParseDuration(role.Lease)
+
+		resp.Secret.Lease = lease
 
 		err = req.Storage.Put(&logical.StorageEntry{
 			Key:   "tokens/" + claims["jti"].(string),
@@ -115,16 +117,18 @@ func (b *backend) secretTokensRenew(
 		return nil, err
 	}
 
-	if role.Lease == false {
+	if role.Lease == "0" {
 		return nil, fmt.Errorf("There is nothing to renew")
 	}
+	
+	lease, _ := time.ParseDuration(role.Lease)
 
 	claimsRaw, ok := req.Secret.InternalData["claims"]
 	claims, ok := claimsRaw.(map[string]interface{})
 
-	lease := &configLease{Lease: 720 * time.Hour}
+	claims["exp"] = time.Now().Add(lease).Unix()
 
-	f := framework.LeaseExtend(lease.Lease, 0, false)
+	f := framework.LeaseExtend(lease, 0, false)
 	resp, err := f(req, d)
 	if err != nil {
 		return nil, err

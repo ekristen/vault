@@ -36,11 +36,6 @@ type backend struct {
 	*framework.Backend
 }
 
-type roleConfig struct {
-	Algorithm string        `json:"algorithm" structs:"algorithm" mapstructure:"algorithm"`
-	Key       string        `json:"key" structs:"key" mapstructure:"key"`
-}
-
 type configLease struct {
 	Lease     time.Duration
 	LeaseMax  time.Duration

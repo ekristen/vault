@@ -88,8 +88,9 @@ func (b *backend) pathIssueWrite(
 	if role.Audience != "" {
 		claims["aud"] = role.Audience
 	}
-	if role.Expiration != 0 {
-		claims["exp"] = int(time.Now().Add(role.Expiration).Unix())
+	if role.Lease != "0" {
+		lease, _ := time.ParseDuration(role.Lease)
+		claims["exp"] = int(time.Now().Add(lease).Unix())
 	}
 
 	if data.Get("iss") != "" {
